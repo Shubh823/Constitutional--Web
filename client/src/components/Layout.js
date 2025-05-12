@@ -13,10 +13,16 @@ const ConstitutionIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className
 const GameIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 
 const Layout = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, authAxios } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({ topics: [], content: [] });
+  const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -30,6 +36,49 @@ const Layout = () => {
     { path: '/constitution/games', label: 'Learning Games', icon: <GameIcon /> },
     { path: '/profile', label: 'Profile', icon: <UserIcon /> }
   ];
+  
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (e.target.value.length === 0) {
+      setShowResults(false);
+    }
+  };
+  
+  // Handle search submit
+  const handleSearchSubmit = async (e) => {
+    e.preventDefault();
+    if (searchQuery.trim().length < 2) return;
+    
+    setIsSearching(true);
+    setShowResults(true);
+    
+    try {
+      const response = await authAxios.get(`/content/search?query=${encodeURIComponent(searchQuery)}`);
+      setSearchResults(response.data);
+    } catch (error) {
+      console.error('Error searching:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  // Handle clicking a search result
+  const handleResultClick = (result) => {
+    setShowResults(false);
+    if (result.type) {
+      // This is a content result
+      navigate(`/content/${result._id}`);
+    } else {
+      // This is a topic result
+      navigate(`/topics/${result._id}`);
+    }
+  };
+  
+  // Close search results when clicking outside
+  const handleClickOutside = () => {
+    setShowResults(false);
+  };
 
   return (
     <div className="flex min-h-screen bg-dark-400">
@@ -149,17 +198,97 @@ const Layout = () => {
             </div>
             
             {/* Search bar */}
-            <div className="flex-1 max-w-md mx-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <SearchIcon />
+            <div className="flex-1 max-w-md mx-4 relative">
+              <form onSubmit={handleSearchSubmit}>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SearchIcon />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search constitutional topics..."
+                    className="input w-full pl-10"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => {
+                      if (searchResults.topics.length > 0 || searchResults.content.length > 0) {
+                        setShowResults(true);
+                      }
+                    }}
+                  />
+                  <button type="submit" className="hidden">Search</button>
                 </div>
-                <input
-                  type="text"
-                  placeholder="Search constitutional topics..."
-                  className="input w-full pl-10"
-                />
-              </div>
+              </form>
+              
+              {/* Search results dropdown */}
+              {showResults && (
+                <div 
+                  className="absolute top-full left-0 right-0 mt-1 bg-dark-200 rounded-lg shadow-lg z-50 border border-dark-100 overflow-hidden"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {isSearching ? (
+                    <div className="p-4 text-center">
+                      <div className="animate-spin h-5 w-5 border-t-2 border-primary-500 rounded-full mx-auto"></div>
+                      <p className="text-gray-400 text-sm mt-2">Searching...</p>
+                    </div>
+                  ) : (
+                    <>
+                      {searchResults.topics.length === 0 && searchResults.content.length === 0 ? (
+                        <div className="p-4 text-center text-gray-400">
+                          No results found for "{searchQuery}"
+                        </div>
+                      ) : (
+                        <div>
+                          {searchResults.topics.length > 0 && (
+                            <div>
+                              <div className="px-4 py-2 bg-dark-300 text-xs font-medium text-gray-400 uppercase">
+                                Topics
+                              </div>
+                              <div className="divide-y divide-dark-300">
+                                {searchResults.topics.map(topic => (
+                                  <div 
+                                    key={topic._id} 
+                                    className="px-4 py-3 hover:bg-dark-300 cursor-pointer"
+                                    onClick={() => handleResultClick(topic)}
+                                  >
+                                    <div className="font-medium text-white">{topic.title}</div>
+                                    <div className="text-sm text-gray-400 mt-1 truncate">{topic.description}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {searchResults.content.length > 0 && (
+                            <div>
+                              <div className="px-4 py-2 bg-dark-300 text-xs font-medium text-gray-400 uppercase">
+                                Content
+                              </div>
+                              <div className="divide-y divide-dark-300">
+                                {searchResults.content.map(content => (
+                                  <div 
+                                    key={content._id} 
+                                    className="px-4 py-3 hover:bg-dark-300 cursor-pointer"
+                                    onClick={() => handleResultClick(content)}
+                                  >
+                                    <div className="font-medium text-white">{content.title}</div>
+                                    <div className="text-sm text-gray-400 mt-1">
+                                      <span className="bg-primary-900/30 text-primary-400 text-xs px-2 py-1 rounded-full uppercase">
+                                        {content.type}
+                                      </span>
+                                      <span className="ml-2">in {content.topic.title}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* User info */}
@@ -179,7 +308,10 @@ const Layout = () => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main 
+          className="flex-1 overflow-y-auto p-4 md:p-6"
+          onClick={handleClickOutside}
+        >
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

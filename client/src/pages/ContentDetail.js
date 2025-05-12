@@ -180,7 +180,13 @@ const ContentDetail = () => {
     if (!content.gameConfig || !content.gameConfig.type) {
       return (
         <div className="text-center text-gray-400 py-8">
-          <p>Game configuration not found</p>
+          <div className="flex flex-col items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>Game configuration not found</p>
+            <p className="text-sm text-gray-500 mt-2">This game may not be properly configured yet.</p>
+          </div>
         </div>
       );
     }
@@ -194,6 +200,9 @@ const ContentDetail = () => {
           <QuizGame 
             quizData={gameConfig.questions || []} 
             onComplete={handleGameComplete} 
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={resetGame}
           />
         );
       case 'matching':
@@ -201,6 +210,9 @@ const ContentDetail = () => {
           <MatchingGame 
             gameData={gameConfig.pairs || []} 
             onComplete={handleGameComplete} 
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={resetGame}
           />
         );
       case 'scenario':
@@ -208,6 +220,9 @@ const ContentDetail = () => {
           <ScenarioGame 
             scenarioData={gameConfig.scenarios || []} 
             onComplete={handleGameComplete} 
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={resetGame}
           />
         );
       case 'timeline':
@@ -215,6 +230,9 @@ const ContentDetail = () => {
           <TimelineGame 
             gameData={gameConfig.events || []} 
             onComplete={handleGameComplete} 
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={resetGame}
           />
         );
       case 'spiral':
@@ -222,12 +240,21 @@ const ContentDetail = () => {
           <SpiralGame 
             gameData={gameConfig} 
             onComplete={handleGameComplete} 
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={resetGame}
           />
         );
       default:
         return (
           <div className="text-center text-gray-400 py-8">
-            <p>Unsupported game type: {gameType}</p>
+            <div className="flex flex-col items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p>Unsupported game type: {gameType}</p>
+              <p className="text-sm text-gray-500 mt-2">This game type is not currently supported.</p>
+            </div>
           </div>
         );
     }
@@ -396,47 +423,73 @@ const ContentDetail = () => {
         ) : content.type === 'game' ? (
           // Game content
           <div className="space-y-6">
-            {gameCompleted ? (
-              // Game completion screen
-              <motion.div 
-                className="space-y-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="text-center py-6">
-                  <h2 className="text-2xl font-bold text-white mb-4">Game Complete!</h2>
-                  
-                  <div className="inline-block h-40 w-40 rounded-full border-8 border-primary-500 p-3 mb-4">
-                    <div className="h-full w-full rounded-full bg-primary-900/30 flex items-center justify-center">
-                      <span className="text-4xl font-bold text-primary-400">{gameScore}%</span>
-                    </div>
-                  </div>
-                  
-                  <p className="text-lg text-gray-300 mb-6">
-                    {gameScore >= 70 
-                      ? 'Great job! You\'ve mastered this game.' 
-                      : 'Keep practicing to improve your score!'}
-                  </p>
-                  
-                  <div className="flex justify-center space-x-4">
-                    <button
-                      onClick={resetGame}
-                      className="btn btn-outline"
-                    >
-                      Play Again
-                    </button>
-                    
-                    <Link to={`/topics/${topic._id}`} className="btn btn-primary">
-                      Back to Topic
-                    </Link>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              // Render the game component
-              renderGameComponent()
+            {/* Breadcrumb navigation */}
+            {topic && (
+              <div className="flex items-center text-sm text-gray-400">
+                <Link to="/topics" className="hover:text-primary-500">
+                  Topics
+                </Link>
+                <span className="mx-2">/</span>
+                <Link to={`/topics/${topic._id}`} className="hover:text-primary-500">
+                  {topic.title}
+                </Link>
+                <span className="mx-2">/</span>
+                <span className="text-gray-300">{content.title}</span>
+              </div>
             )}
+            
+            {/* Game header */}
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+              <div>
+                <h1 className="text-2xl font-bold text-white">{content.title}</h1>
+                <p className="text-gray-400 mt-1">
+                  <span className="bg-primary-900/30 text-primary-400 text-xs px-2 py-1 rounded-full uppercase">
+                    Interactive Game
+                  </span>
+                  <span className="ml-2">·</span>
+                  <span className="ml-2">{content.estimatedTime || '10'} min</span>
+                  <span className="ml-2">·</span>
+                  <span className="ml-2">{content.points || '50'} points</span>
+                </p>
+              </div>
+              
+              {gameCompleted && (
+                <div className="flex items-center bg-green-900/30 border border-green-800 text-green-400 px-4 py-2 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium">Completed: {gameScore}%</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Game description */}
+            {content.content && (
+              <div className="bg-dark-200 rounded-lg p-4">
+                <p className="text-gray-300">{content.content}</p>
+              </div>
+            )}
+            
+            {/* Game component */}
+            <div className="mt-6">
+              {renderGameComponent()}
+            </div>
+            
+            {/* Navigation buttons */}
+            <div className="flex justify-between pt-4 mt-6 border-t border-dark-200">
+              <Link to={`/topics/${topic?._id}`} className="btn btn-secondary">
+                Back to Topic
+              </Link>
+              
+              {!gameCompleted && (
+                <button 
+                  onClick={handleContentCompleted} 
+                  className="btn btn-primary"
+                >
+                  Mark as Complete
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           // Other content types (lesson, article, video)
