@@ -1,0 +1,21 @@
+{
+  "name": "constitutional-learning-platform",
+  "version": "1.0.0",
+  "description": "Interactive platform for learning constitutional laws",
+  "main": "index.js",
+  "scripts": {
+    "client": "cd client && npm start",
+    "server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install-client": "cd client && npm install",
+    "install-server": "cd server && npm install",
+    "install-all": "npm install && npm run install-client && npm run install-server",
+    "build-client": "cd client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.0.1"
+  }
+} 
