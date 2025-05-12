@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const Content = require('./models/Content');
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/constitutional-app', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/constitutional', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => {

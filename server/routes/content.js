@@ -73,6 +73,273 @@ router.get('/content/:contentId', async (req, res) => {
   }
 });
 
+// New endpoint - Get all game types at once
+router.get('/games/all', async (req, res) => {
+  try {
+    console.log('🔍 Fetching all games...');
+    
+    // Valid game types
+    const gameTypes = ['quiz', 'scenario', 'matching', 'spiral', 'timeline'];
+    const result = {};
+    
+    // Process each game type
+    for (const gameType of gameTypes) {
+      console.log(`Looking for ${gameType} games...`);
+      let games;
+      
+      // Handle different game types
+      if (gameType === 'quiz') {
+        // Find content with type "quiz"
+        games = await Content.find({ 
+          type: 'quiz',
+          isActive: true
+        });
+      } else {
+        // Find game content with specific gameConfig.type
+        games = await Content.find({ 
+          type: 'game',
+          'gameConfig.type': gameType,
+          isActive: true
+        });
+      }
+      
+      console.log(`Found ${games.length} ${gameType} games`);
+      
+      if (games && games.length > 0) {
+        // Format the game data based on type
+        if (gameType === 'quiz') {
+          const questions = games[0].quiz && games[0].quiz.questions ? games[0].quiz.questions : [];
+          result[gameType] = {
+            id: games[0]._id,
+            title: games[0].title,
+            data: questions
+          };
+          console.log(`Quiz data length: ${result[gameType].data.length}`);
+        } else if (gameType === 'scenario') {
+          const scenarios = games[0].gameConfig && 
+                           games[0].gameConfig.config && 
+                           games[0].gameConfig.config.scenarios ? 
+                           games[0].gameConfig.config.scenarios : [];
+          result[gameType] = {
+            id: games[0]._id,
+            title: games[0].title,
+            data: scenarios
+          };
+          console.log(`Scenario data length: ${result[gameType].data.length}`);
+        } else if (gameType === 'matching') {
+          const pairs = games[0].gameConfig && 
+                       games[0].gameConfig.config && 
+                       games[0].gameConfig.config.pairs ? 
+                       games[0].gameConfig.config.pairs : [];
+          result[gameType] = {
+            id: games[0]._id,
+            title: games[0].title,
+            data: pairs
+          };
+          console.log(`Matching data length: ${result[gameType].data.length}`);
+        } else if (gameType === 'spiral') {
+          const config = games[0].gameConfig && games[0].gameConfig.config ? 
+                        games[0].gameConfig.config : {};
+          result[gameType] = {
+            id: games[0]._id,
+            title: games[0].title,
+            data: config
+          };
+          console.log(`Spiral data: ${JSON.stringify(result[gameType].data, null, 2).substring(0, 100)}...`);
+        } else if (gameType === 'timeline') {
+          const events = games[0].gameConfig && 
+                        games[0].gameConfig.config && 
+                        games[0].gameConfig.config.events ? 
+                        games[0].gameConfig.config.events : [];
+          result[gameType] = {
+            id: games[0]._id,
+            title: games[0].title,
+            data: events
+          };
+          console.log(`Timeline data length: ${result[gameType].data.length}`);
+        }
+      } else {
+        // No games found for this type
+        result[gameType] = { id: null, title: null, data: [] };
+        console.log(`No ${gameType} games found`);
+      }
+    }
+    
+    console.log('✅ Successfully retrieved all games');
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching all games:', error);
+    res.status(500).json({ 
+      message: 'Error fetching all games', 
+      error: error.message 
+    });
+  }
+});
+
+// New endpoint - Get all games (for debugging)
+router.get('/games/list', async (req, res) => {
+  try {
+    console.log('Listing all games in database...');
+    
+    // Find all content with type "quiz" or "game"
+    const allGames = await Content.find({
+      $or: [
+        { type: 'quiz' },
+        { type: 'game' }
+      ],
+      isActive: true
+    });
+    
+    console.log(`Found ${allGames.length} games in database`);
+    
+    // Return minimal game info to avoid overwhelming the response
+    const gameList = allGames.map(game => ({
+      id: game._id,
+      title: game.title,
+      type: game.type,
+      gameType: game.type === 'game' && game.gameConfig ? game.gameConfig.type : 'quiz',
+      hasConfig: game.type === 'game' && !!game.gameConfig,
+      hasQuestions: game.type === 'quiz' && !!game.quiz && Array.isArray(game.quiz.questions),
+      questionsCount: game.type === 'quiz' && game.quiz && Array.isArray(game.quiz.questions) ? game.quiz.questions.length : 0
+    }));
+    
+    res.json(gameList);
+  } catch (error) {
+    console.error('Error listing games:', error);
+    res.status(500).json({ 
+      message: 'Error listing games', 
+      error: error.message 
+    });
+  }
+});
+
+// New endpoint - Get games by type
+router.get('/games/:gameType', async (req, res) => {
+  try {
+    const { gameType } = req.params;
+    
+    // Validate game type
+    const validGameTypes = ['quiz', 'scenario', 'matching', 'spiral', 'timeline'];
+    if (!validGameTypes.includes(gameType)) {
+      return res.status(400).json({ 
+        message: 'Invalid game type',
+        validTypes: validGameTypes
+      });
+    }
+    
+    let games;
+    
+    // Handle different game types
+    if (gameType === 'quiz') {
+      // Find content with type "quiz"
+      games = await Content.find({ 
+        type: 'quiz',
+        isActive: true
+      });
+    } else {
+      // Find game content with specific gameConfig.type
+      games = await Content.find({ 
+        type: 'game',
+        'gameConfig.type': gameType,
+        isActive: true
+      });
+    }
+    
+    if (!games || games.length === 0) {
+      return res.status(404).json({ message: `No ${gameType} games found` });
+    }
+    
+    // Return formatted game data based on type
+    const formattedGames = games.map(game => {
+      if (gameType === 'quiz') {
+        return {
+          id: game._id,
+          title: game.title,
+          description: game.content,
+          questions: game.quiz.questions
+        };
+      } else if (gameType === 'scenario') {
+        return {
+          id: game._id,
+          title: game.title,
+          description: game.content,
+          scenarios: game.gameConfig.config.scenarios
+        };
+      } else {
+        return {
+          id: game._id,
+          title: game.title,
+          description: game.content,
+          config: game.gameConfig.config
+        };
+      }
+    });
+    
+    res.json(formattedGames);
+  } catch (error) {
+    console.error(`Error fetching ${req.params.gameType} games:`, error);
+    res.status(500).json({ 
+      message: `Error fetching ${req.params.gameType} games`, 
+      error: error.message 
+    });
+  }
+});
+
+// New endpoint - Get specific game by ID
+router.get('/game/:gameId', async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    
+    // Find the game by ID
+    const game = await Content.findById(gameId);
+    
+    if (!game) {
+      return res.status(404).json({ message: 'Game not found' });
+    }
+    
+    // Return formatted game data based on type
+    let gameData;
+    
+    if (game.type === 'quiz') {
+      gameData = {
+        id: game._id,
+        title: game.title,
+        type: 'quiz',
+        description: game.content,
+        questions: game.quiz.questions
+      };
+    } else if (game.type === 'game' && game.gameConfig && game.gameConfig.type === 'scenario') {
+      gameData = {
+        id: game._id,
+        title: game.title,
+        type: 'scenario',
+        description: game.content,
+        scenarios: game.gameConfig.config.scenarios
+      };
+    } else if (game.type === 'game') {
+      gameData = {
+        id: game._id,
+        title: game.title,
+        type: game.gameConfig.type,
+        description: game.content,
+        config: game.gameConfig.config
+      };
+    } else {
+      gameData = {
+        id: game._id,
+        title: game.title,
+        type: game.type,
+        description: game.content
+      };
+    }
+    
+    res.json(gameData);
+  } catch (error) {
+    console.error('Error fetching game:', error);
+    res.status(500).json({ message: 'Error fetching game', error: error.message });
+  }
+});
+
 // ==================== TOPIC CONTENT ROUTES ====================
 // Get all content for a topic
 router.get('/topics/:topicId/content', async (req, res) => {
@@ -245,6 +512,17 @@ router.post('/track', authenticateToken, async (req, res) => {
       });
     }
     
+    // Get the content to determine if it's a game
+    const content = await Content.findById(contentId);
+    let isGame = false;
+    
+    if (content) {
+      isGame = type === 'quiz' || 
+              (content.type === 'game' || 
+               (content.gameConfig && 
+                ['quiz', 'scenario', 'matching', 'spiral', 'timeline'].includes(content.gameConfig.type)));
+    }
+    
     if (type === 'quiz') {
       // Add quiz score
       const existingQuizIndex = progress.quizScores.findIndex(
@@ -303,7 +581,24 @@ router.post('/track', authenticateToken, async (req, res) => {
     progress.lastUpdated = Date.now();
     await progress.save();
     
-    res.json(progress);
+    // Check for achievements if it's a game and it's completed or has a high score
+    let achievementsChecked = false;
+    let newBadges = 0;
+    
+    if (isGame && (completed || (type === 'quiz' && score >= 80))) {
+      // Import the checkAndAwardAchievements function
+      const { checkAndAwardAchievements } = require('./users');
+      
+      // Check for new achievements
+      newBadges = await checkAndAwardAchievements(req.user.id);
+      achievementsChecked = true;
+    }
+    
+    res.json({
+      progress,
+      achievementsChecked,
+      newBadges
+    });
   } catch (error) {
     console.error('Error tracking progress:', error);
     res.status(500).json({ message: 'Error tracking progress', error: error.message });

@@ -452,49 +452,6 @@ const ConstitutionalTopics = () => {
         </>
       )}
       
-      {/* Constitution map visualization (simplified) */}
-      <div className="card p-5 mt-8">
-        <h2 className="text-xl font-bold text-white mb-4">Constitution Map</h2>
-        <div className="relative overflow-x-auto">
-          <div className="flex flex-col items-center min-w-[700px]">
-            <div className="p-3 bg-primary-600 text-white rounded-lg mb-4">
-              Indian Constitution
-            </div>
-            <div className="border-l-2 border-primary-500 h-8"></div>
-            <div className="grid grid-cols-5 gap-4 mb-4">
-              {levels.map((level) => (
-                <div 
-                  key={level.id}
-                  className="p-2 bg-dark-200 text-center text-white rounded-lg"
-                >
-                  {level.name.split(':')[0]}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-5 gap-4 w-full">
-              <div className="flex flex-col items-center gap-2">
-                <div className="p-2 bg-blue-900/30 text-blue-300 text-xs text-center rounded w-full">Preamble</div>
-                <div className="p-2 bg-blue-900/30 text-blue-300 text-xs text-center rounded w-full">History</div>
-                <div className="p-2 bg-blue-900/30 text-blue-300 text-xs text-center rounded w-full">Features</div>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="p-2 bg-green-900/30 text-green-300 text-xs text-center rounded w-full">25 Parts</div>
-                <div className="p-2 bg-green-900/30 text-green-300 text-xs text-center rounded w-full">395 Articles</div>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="p-2 bg-purple-900/30 text-purple-300 text-xs text-center rounded w-full">12 Schedules</div>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="p-2 bg-yellow-900/30 text-yellow-300 text-xs text-center rounded w-full">105 Amendments</div>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="p-2 bg-red-900/30 text-red-300 text-xs text-center rounded w-full">Basic Structure</div>
-                <div className="p-2 bg-red-900/30 text-red-300 text-xs text-center rounded w-full">Landmark Cases</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

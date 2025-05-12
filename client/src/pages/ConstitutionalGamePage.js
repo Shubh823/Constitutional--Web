@@ -1,18 +1,313 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
 import MatchingGame from '../components/ConstitutionalGames/MatchingGame';
 import QuizGame from '../components/ConstitutionalGames/QuizGame';
 import ScenarioGame from '../components/ConstitutionalGames/ScenarioGame';
 import ConstitutionSpiralGame from '../components/ConstitutionalGames/SpiralGame';
 import TimelineGame from '../components/ConstitutionalGames/TimelineGame';
+import { AuthContext } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 const ConstitutionalGamePage = () => {
   const [selectedGame, setSelectedGame] = useState('spiral');
+  const [selectedGameData, setSelectedGameData] = useState(null);
+  const [showGameSelector, setShowGameSelector] = useState(true);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [gameScore, setGameScore] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [newAchievements, setNewAchievements] = useState(false);
   
-  // Sample data for matching game (Indian Constitution)
-  const matchingGameData = [
+  // Add state for game data
+  const [quizGames, setQuizGames] = useState([]);
+  const [scenarioGames, setScenarioGames] = useState([]);
+  const [matchingGames, setMatchingGames] = useState([]);
+  const [spiralGames, setSpiralGames] = useState([]);
+  const [timelineGames, setTimelineGames] = useState([]);
+  
+  // Add state for achievements
+  const [achievements, setAchievements] = useState([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
+  
+  // Get the authentication context for API calls
+  const { authAxios } = useContext(AuthContext);
+  
+  // Fetch game data from the server
+  useEffect(() => {
+    const fetchGameData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        console.log('🔍 Fetching game data...');
+        
+        // First try to get all games of all types at once 
+        console.log('📡 Making API call to /content/games/all');
+        const allGamesResponse = await authAxios.get('/content/games/all');
+        console.log('✅ Response received from /content/games/all:', allGamesResponse);
+        
+        if (allGamesResponse.data) {
+          console.log('📋 Processing response data...');
+          
+          // Process quiz games
+          if (allGamesResponse.data.quiz && allGamesResponse.data.quiz.data) {
+            console.log('📋 Fetching additional quiz games...');
+            // Query for additional quizzes
+            const quizResponse = await authAxios.get('/content/games/quiz');
+            console.log('✅ Quiz response:', quizResponse);
+            if (quizResponse.data && quizResponse.data.length > 0) {
+              console.log(`✅ Setting quiz games: ${quizResponse.data.length} found`);
+              setQuizGames(quizResponse.data);
+            } else {
+              console.log('⚠️ No quiz games found, using sample data');
+              setQuizGames([{ 
+                id: 'sample-quiz',
+                title: 'Constitutional Quiz',
+                description: 'Test your knowledge of the constitution',
+                questions: sampleQuizGameData
+              }]);
+            }
+          } else {
+            console.log('⚠️ No quiz data in combined response, using sample data');
+            setQuizGames([{ 
+              id: 'sample-quiz',
+              title: 'Constitutional Quiz',
+              description: 'Test your knowledge of the constitution',
+              questions: sampleQuizGameData
+            }]);
+          }
+          
+          // Process scenario games
+          if (allGamesResponse.data.scenario && allGamesResponse.data.scenario.data) {
+            // Query for additional scenarios
+            const scenarioResponse = await authAxios.get('/content/games/scenario');
+            if (scenarioResponse.data && scenarioResponse.data.length > 0) {
+              console.log('Setting scenario games:', scenarioResponse.data);
+              setScenarioGames(scenarioResponse.data);
+            } else {
+              setScenarioGames([{
+                id: 'sample-scenario',
+                title: 'Constitutional Scenarios',
+                description: 'Apply constitutional principles to real-world situations',
+                scenarios: sampleScenarioGameData
+              }]);
+            }
+          } else {
+            setScenarioGames([{
+              id: 'sample-scenario',
+              title: 'Constitutional Scenarios',
+              description: 'Apply constitutional principles to real-world situations',
+              scenarios: sampleScenarioGameData
+            }]);
+          }
+          
+          // Process matching games
+          if (allGamesResponse.data.matching && allGamesResponse.data.matching.data) {
+            // Query for additional matching games
+            const matchingResponse = await authAxios.get('/content/games/matching');
+            if (matchingResponse.data && matchingResponse.data.length > 0) {
+              console.log('Setting matching games:', matchingResponse.data);
+              setMatchingGames(matchingResponse.data.map(game => ({
+                id: game.id,
+                title: game.title,
+                description: game.description,
+                pairs: game.config?.pairs || sampleMatchingGameData
+              })));
+            } else {
+              setMatchingGames([{
+                id: 'sample-matching',
+                title: 'Article Matching Game',
+                description: 'Match constitutional articles with their definitions',
+                pairs: sampleMatchingGameData
+              }]);
+            }
+          } else {
+            setMatchingGames([{
+              id: 'sample-matching',
+              title: 'Article Matching Game',
+              description: 'Match constitutional articles with their definitions',
+              pairs: sampleMatchingGameData
+            }]);
+          }
+          
+          // Process spiral games
+          if (allGamesResponse.data.spiral && allGamesResponse.data.spiral.data) {
+            // Query for additional spiral games
+            const spiralResponse = await authAxios.get('/content/games/spiral');
+            if (spiralResponse.data && spiralResponse.data.length > 0) {
+              console.log('Setting spiral games:', spiralResponse.data);
+              setSpiralGames(spiralResponse.data.map(game => ({
+                id: game.id,
+                title: game.title,
+                description: game.description,
+                config: game.config || sampleSpiralGameData
+              })));
+            } else {
+              setSpiralGames([{
+                id: 'sample-spiral',
+                title: 'Constitution Structure Spiral',
+                description: 'Explore the structure of the constitution',
+                config: sampleSpiralGameData
+              }]);
+            }
+          } else {
+            setSpiralGames([{
+              id: 'sample-spiral',
+              title: 'Constitution Structure Spiral',
+              description: 'Explore the structure of the constitution',
+              config: sampleSpiralGameData
+            }]);
+          }
+          
+          // Process timeline games
+          if (allGamesResponse.data.timeline && allGamesResponse.data.timeline.data) {
+            // Query for additional timeline games
+            const timelineResponse = await authAxios.get('/content/games/timeline');
+            if (timelineResponse.data && timelineResponse.data.length > 0) {
+              console.log('Setting timeline games:', timelineResponse.data);
+              setTimelineGames(timelineResponse.data.map(game => ({
+                id: game.id,
+                title: game.title,
+                description: game.description,
+                events: game.config?.events || sampleTimelineGameData
+              })));
+            } else {
+              setTimelineGames([{
+                id: 'sample-timeline',
+                title: 'Constitutional Timeline',
+                description: 'Learn the timeline of constitutional events',
+                events: sampleTimelineGameData
+              }]);
+            }
+          } else {
+            setTimelineGames([{
+              id: 'sample-timeline',
+              title: 'Constitutional Timeline',
+              description: 'Learn the timeline of constitutional events',
+              events: sampleTimelineGameData
+            }]);
+          }
+        } else {
+          console.log('⚠️ Empty response data, using sample data');
+          // Fallback to sample data
+          setQuizGames([{ 
+            id: 'sample-quiz',
+            title: 'Constitutional Quiz',
+            description: 'Test your knowledge of the constitution',
+            questions: sampleQuizGameData
+          }]);
+          
+          setScenarioGames([{
+            id: 'sample-scenario',
+            title: 'Constitutional Scenarios',
+            description: 'Apply constitutional principles to real-world situations',
+            scenarios: sampleScenarioGameData
+          }]);
+          
+          setMatchingGames([{
+            id: 'sample-matching',
+            title: 'Article Matching Game',
+            description: 'Match constitutional articles with their definitions',
+            pairs: sampleMatchingGameData
+          }]);
+          
+          setSpiralGames([{
+            id: 'sample-spiral',
+            title: 'Constitution Structure Spiral',
+            description: 'Explore the structure of the constitution',
+            config: sampleSpiralGameData
+          }]);
+          
+          setTimelineGames([{
+            id: 'sample-timeline',
+            title: 'Constitutional Timeline',
+            description: 'Learn the timeline of constitutional events',
+            events: sampleTimelineGameData
+          }]);
+        }
+        
+        console.log('✅ Game data loading complete');
+        setLoading(false);
+      } catch (err) {
+        console.error('❌ Error fetching game data:', err);
+        if (err.response) {
+          console.error('❌ Response data:', err.response.data);
+          console.error('❌ Response status:', err.response.status);
+          console.error('❌ Response headers:', err.response.headers);
+        } else if (err.request) {
+          console.error('❌ Request made but no response received:', err.request);
+        } else {
+          console.error('❌ Error message:', err.message);
+        }
+        console.error('❌ Error config:', err.config);
+        
+        setError('Failed to load game data. Please try again later.');
+        setLoading(false);
+        
+        // Use sample data as fallback if server fails
+        console.log('⚠️ Error occurred, using sample data');
+        setQuizGames([{ 
+          id: 'sample-quiz',
+          title: 'Constitutional Quiz',
+          description: 'Test your knowledge of the constitution',
+          questions: sampleQuizGameData
+        }]);
+        
+        setScenarioGames([{
+          id: 'sample-scenario',
+          title: 'Constitutional Scenarios',
+          description: 'Apply constitutional principles to real-world situations',
+          scenarios: sampleScenarioGameData
+        }]);
+        
+        setMatchingGames([{
+          id: 'sample-matching',
+          title: 'Article Matching Game',
+          description: 'Match constitutional articles with their definitions',
+          pairs: sampleMatchingGameData
+        }]);
+        
+        setSpiralGames([{
+          id: 'sample-spiral',
+          title: 'Constitution Structure Spiral',
+          description: 'Explore the structure of the constitution',
+          config: sampleSpiralGameData
+        }]);
+        
+        setTimelineGames([{
+          id: 'sample-timeline',
+          title: 'Constitutional Timeline',
+          description: 'Learn the timeline of constitutional events',
+          events: sampleTimelineGameData
+        }]);
+      }
+    };
+    
+    fetchGameData();
+  }, [authAxios]);
+  
+  // Fetch user achievements
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      setAchievementsLoading(true);
+      
+      try {
+        const response = await authAxios.get('/users/achievements');
+        if (response.data && response.data.badges) {
+          setAchievements(response.data.badges);
+        }
+        setAchievementsLoading(false);
+      } catch (err) {
+        console.error('Error fetching achievements:', err);
+        setAchievementsLoading(false);
+      }
+    };
+    
+    fetchAchievements();
+  }, [authAxios, newAchievements]);
+  
+  // Sample data as fallback
+  const sampleMatchingGameData = [
     { 
       term: 'Article 14', 
       definition: 'Right to Equality - Equality before law and equal protection of laws'
@@ -39,8 +334,8 @@ const ConstitutionalGamePage = () => {
     }
   ];
   
-  // Sample data for quiz game (Indian Constitution)
-  const quizGameData = [
+  // Sample data as fallback
+  const sampleQuizGameData = [
     {
       question: 'Which article of the Indian Constitution abolishes untouchability?',
       options: [
@@ -88,8 +383,8 @@ const ConstitutionalGamePage = () => {
     }
   ];
   
-  // Sample data for scenario game (Indian Constitution)
-  const scenarioGameData = [
+  // Sample data as fallback
+  const sampleScenarioGameData = [
     {
       title: 'Freedom of Speech and Expression',
       description: 'A student organization at a government-funded university wants to organize a peaceful protest criticizing certain government policies. The university administration denies permission, citing concerns about disturbing academic activities.',
@@ -133,77 +428,11 @@ const ConstitutionalGamePage = () => {
           feedback: 'There is no such specific limit in the Constitution for reservations under Article 15(3). The Supreme Court has generally discouraged reservations exceeding 50% in total, but this applies to the aggregate of all reservations.'
         }
       ]
-    },
-    {
-      title: 'Right to Education',
-      description: 'A private unaided school refuses admission to a child from an economically weaker section, despite the Right to Education Act mandating that such schools reserve 25% seats for disadvantaged groups.',
-      hint: 'Consider Article 21A and the RTE Act.',
-      options: [
-        {
-          text: 'The school has complete autonomy as a private institution and cannot be forced to provide reservations.',
-          isCorrect: false,
-          feedback: 'The Supreme Court has upheld the constitutional validity of the 25% reservation in private unaided schools under the RTE Act, considering education as a fundamental right under Article 21A.'
-        },
-        {
-          text: 'The school must comply with the RTE Act provisions for 25% reservation as education is a fundamental right.',
-          isCorrect: true,
-          feedback: 'Correct! In Society for Unaided Private Schools of Rajasthan v. Union of India (2012), the Supreme Court upheld the constitutional validity of the 25% reservation in private unaided non-minority schools under the RTE Act.'
-        },
-        {
-          text: 'Only government schools have an obligation to provide free education to disadvantaged groups.',
-          isCorrect: false,
-          feedback: 'The RTE Act specifically includes private schools in its ambit for the 25% reservation, recognizing education as a social good and ensuring inclusive education across all types of schools.'
-        }
-      ]
-    },
-    {
-      title: 'Emergency Provisions',
-      description: 'Following widespread riots and civil unrest in multiple states, the President is considering declaring a national emergency under Article 352.',
-      hint: 'Consider the grounds for declaring an emergency under Article 352.',
-      options: [
-        {
-          text: 'The President can independently declare a national emergency.',
-          isCorrect: false,
-          feedback: 'Post the 44th Amendment, the President can declare an emergency only upon written recommendation of the Cabinet, not independently.'
-        },
-        {
-          text: 'Internal disturbance is sufficient ground for declaring a national emergency.',
-          isCorrect: false,
-          feedback: 'After the 44th Amendment, "internal disturbance" was replaced with "armed rebellion" as a ground for emergency under Article 352. Civil unrest alone is not sufficient.'
-        },
-        {
-          text: 'A national emergency can be declared only if there is a threat of war, external aggression, or armed rebellion.',
-          isCorrect: true,
-          feedback: 'Correct! Article 352 allows the President to declare a national emergency only on grounds of war, external aggression, or armed rebellion. Civil unrest or riots, unless amounting to armed rebellion, do not qualify.'
-        }
-      ]
-    },
-    {
-      title: 'Freedom of Religion',
-      description: 'A religious community wants to establish a new educational institution that would give preference in admission to students of their own religion.',
-      hint: 'Consider Articles 25-30, particularly Article 30.',
-      options: [
-        {
-          text: 'This is unconstitutional as it discriminates based on religion.',
-          isCorrect: false,
-          feedback: 'Article 30 specifically gives religious and linguistic minorities the right to establish and administer educational institutions of their choice.'
-        },
-        {
-          text: 'This is constitutional only if the institution doesn\'t receive any government aid.',
-          isCorrect: false,
-          feedback: 'While receiving government aid may impose certain regulatory conditions, the fundamental right under Article 30 isn\'t negated by receiving aid.'
-        },
-        {
-          text: 'This is constitutional as minorities have the right to establish and administer educational institutions under Article 30.',
-          isCorrect: true,
-          feedback: 'Correct! Article 30 guarantees religious and linguistic minorities the right to establish and administer educational institutions of their choice, which includes reasonable preference in admissions to students of their community.'
-        }
-      ]
     }
   ];
   
-  // Sample data for spiral game (new game type)
-  const spiralGameData = {
+  // Sample data as fallback (Spiral game)
+  const sampleSpiralGameData = {
     centerTitle: "Indian Constitution",
     levels: [
       {
@@ -234,8 +463,8 @@ const ConstitutionalGamePage = () => {
     ]
   };
   
-  // Sample data for timeline game (new game type)
-  const timelineGameData = [
+  // Sample data as fallback (Timeline game)
+  const sampleTimelineGameData = [
     {
       year: 1946,
       event: "Formation of Constituent Assembly",
@@ -254,72 +483,269 @@ const ConstitutionalGamePage = () => {
     {
       year: 1950,
       event: "Constitution Implementation",
-      details: "The Constitution of India came into effect on January 26"
-    },
-    {
-      year: 1951,
-      event: "First Amendment",
-      details: "Added the Ninth Schedule to protect land reform laws from judicial review"
-    },
-    {
-      year: 1971,
-      event: "24th Amendment",
-      details: "Parliament given power to amend any part of the Constitution"
+      details: "The Constitution of India came into effect on January 26, celebrated as Republic Day"
     },
     {
       year: 1976,
       event: "42nd Amendment",
-      details: "Known as 'Mini-Constitution' making major changes during Emergency"
-    },
-    {
-      year: 1978,
-      event: "44th Amendment",
-      details: "Removed the Right to Property as a Fundamental Right"
-    },
-    {
-      year: 1992,
-      event: "73rd & 74th Amendments",
-      details: "Constitutional status to Panchayati Raj and Urban Local Bodies"
-    },
-    {
-      year: 2002,
-      event: "86th Amendment",
-      details: "Made Education a Fundamental Right for children aged 6-14"
-    },
-    {
-      year: 2016,
-      event: "101st Amendment",
-      details: "Introduction of Goods and Services Tax (GST)"
+      details: "Added the words 'secular' and 'socialist' to the Preamble"
     }
   ];
   
-  // Handle game completion
-  const handleGameComplete = (score) => {
-    setGameCompleted(true);
-    setGameScore(score);
+  const handleGameSelect = (gameType) => {
+    setSelectedGame(gameType);
+    setShowGameSelector(true);
+    setSelectedGameData(null);
+    setGameCompleted(false);
   };
   
-  // Reset game state
+  const handleSpecificGameSelect = (game) => {
+    setSelectedGameData(game);
+    setShowGameSelector(false);
+    setGameCompleted(false);
+  };
+  
+  const handleGameComplete = async (score) => {
+    setGameScore(score);
+    setGameCompleted(true);
+    
+    // After game completion, check for new achievements
+    try {
+      await authAxios.post('/users/process-achievements');
+      setNewAchievements(prev => !prev); // Toggle to trigger re-fetch
+    } catch (error) {
+      console.error('Error processing achievements:', error);
+    }
+  };
+  
   const handlePlayAgain = () => {
     setGameCompleted(false);
     setGameScore(0);
   };
   
-  // Game definitions with descriptions and UI for selection
+  const handleBackToGameList = () => {
+    setShowGameSelector(true);
+    setSelectedGameData(null);
+    setGameCompleted(false);
+  };
+  
+  // Get current games list based on selected game type
+  const getCurrentGames = () => {
+    switch (selectedGame) {
+      case 'quiz':
+        return quizGames;
+      case 'scenario':
+        return scenarioGames;
+      case 'matching':
+        return matchingGames;
+      case 'spiral':
+        return spiralGames;
+      case 'timeline':
+        return timelineGames;
+      default:
+        return [];
+    }
+  };
+  
+  // Get game data for the selected game
+  const getGameData = () => {
+    if (!selectedGameData) return null;
+    
+    switch (selectedGame) {
+      case 'quiz':
+        return selectedGameData.questions;
+      case 'scenario':
+        return selectedGameData.scenarios;
+      case 'matching':
+        return selectedGameData.pairs;
+      case 'spiral':
+        return selectedGameData.config;
+      case 'timeline':
+        return selectedGameData.events;
+      default:
+        return null;
+    }
+  };
+  
+  // Render the game component based on selected game type
+  const renderGameComponent = () => {
+    const gameData = getGameData();
+    if (!gameData) return null;
+    
+    switch (selectedGame) {
+      case 'matching':
+        return (
+          <MatchingGame 
+            gameData={gameData} 
+            onComplete={handleGameComplete}
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={handlePlayAgain}
+          />
+        );
+      
+      case 'quiz':
+        return (
+          <QuizGame 
+            quizData={gameData} 
+            onComplete={handleGameComplete}
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={handlePlayAgain}
+          />
+        );
+      
+      case 'scenario':
+        return (
+          <ScenarioGame 
+            scenarioData={gameData} 
+            onComplete={handleGameComplete}
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={handlePlayAgain}
+          />
+        );
+      
+      case 'spiral':
+        return (
+          <ConstitutionSpiralGame 
+            gameData={gameData}
+            onComplete={handleGameComplete}
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={handlePlayAgain}
+          />
+        );
+      
+      case 'timeline':
+        return (
+          <TimelineGame 
+            gameData={gameData}
+            onComplete={handleGameComplete}
+            isCompleted={gameCompleted}
+            score={gameScore}
+            onPlayAgain={handlePlayAgain}
+          />
+        );
+      
+      default:
+        return null;
+    }
+  };
+  
+  // Get the game type title
+  const getGameTypeTitle = () => {
+    switch (selectedGame) {
+      case 'quiz':
+        return 'Quizzes';
+      case 'scenario':
+        return 'Constitutional Scenarios';
+      case 'matching':
+        return 'Matching Games';
+      case 'spiral':
+        return 'Spiral Visualizations';
+      case 'timeline':
+        return 'Timeline Games';
+      default:
+        return 'Games';
+    }
+  };
+  
+  // Helper function to get badge icon
+  const getBadgeIcon = (badgeName) => {
+    switch (badgeName) {
+      case 'Quiz Master':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+        );
+      case 'Constitution Defender':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        );
+      case 'Preamble Scholar':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        );
+      case 'Rights Expert':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+          </svg>
+        );
+      case 'Amendment Tracker':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+          </svg>
+        );
+      case 'Perfect Score':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+        );
+      case 'Fast Learner':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        );
+      case 'Constitutional Expert':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        );
+      default:
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+        );
+    }
+  };
+  
+  // Helper function to get badge color based on rarity
+  const getBadgeColor = (rarity, earned) => {
+    if (!earned) return 'bg-dark-200 text-gray-400';
+    
+    switch (rarity) {
+      case 'common':
+        return 'bg-green-900/30 border-2 border-green-500 text-green-400';
+      case 'uncommon':
+        return 'bg-blue-900/30 border-2 border-blue-500 text-blue-400';
+      case 'rare':
+        return 'bg-purple-900/30 border-2 border-purple-500 text-purple-400';
+      case 'epic':
+        return 'bg-yellow-900/30 border-2 border-yellow-500 text-yellow-400';
+      case 'legendary':
+        return 'bg-red-900/30 border-2 border-red-500 text-red-400';
+      default:
+        return 'bg-dark-200 text-gray-400';
+    }
+  };
+  
+  // Game type definitions
   const gameTypes = [
     {
       id: 'spiral',
       title: 'Constitution Spiral',
-      description: 'Explore the Indian Constitution through an interactive spiral visualization',
+      description: 'Explore the structure of the Indian Constitution through an interactive spiral',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
         </svg>
       )
     },
     {
       id: 'scenario',
-      title: 'Scenario Challenge',
+      title: 'Constitutional Scenarios',
       description: 'Apply constitutional principles to real-world scenarios',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -359,6 +785,23 @@ const ConstitutionalGamePage = () => {
     }
   ];
   
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="text-center p-6 bg-red-900/20 border border-red-800 rounded-lg">
+        <h2 className="text-xl font-bold text-white mb-2">Error Loading Games</h2>
+        <p className="text-red-300">{error}</p>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -373,7 +816,7 @@ const ConstitutionalGamePage = () => {
         {gameTypes.map(game => (
           <button
             key={game.id}
-            onClick={() => setSelectedGame(game.id)}
+            onClick={() => handleGameSelect(game.id)}
             className={`p-4 rounded-lg flex flex-col items-center transition ${
               selectedGame === game.id
                 ? 'bg-primary-600 text-white' 
@@ -394,59 +837,50 @@ const ConstitutionalGamePage = () => {
       {/* Game display area */}
       <motion.div
         className="card p-5"
-        key={selectedGame}
+        key={selectedGame + (showGameSelector ? 'selector' : 'game') + (selectedGameData ? selectedGameData.id : '')}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {selectedGame === 'matching' && (
-          <MatchingGame 
-            gameData={matchingGameData} 
-            onComplete={handleGameComplete}
-            isCompleted={gameCompleted}
-            score={gameScore}
-            onPlayAgain={handlePlayAgain}
-          />
-        )}
-        
-        {selectedGame === 'quiz' && (
-          <QuizGame 
-            gameData={quizGameData} 
-            onComplete={handleGameComplete}
-            isCompleted={gameCompleted}
-            score={gameScore}
-            onPlayAgain={handlePlayAgain}
-          />
-        )}
-        
-        {selectedGame === 'scenario' && (
-          <ScenarioGame 
-            gameData={scenarioGameData} 
-            onComplete={handleGameComplete}
-            isCompleted={gameCompleted}
-            score={gameScore}
-            onPlayAgain={handlePlayAgain}
-          />
-        )}
-        
-        {selectedGame === 'spiral' && (
-          <ConstitutionSpiralGame 
-            gameData={spiralGameData}
-            onComplete={handleGameComplete}
-            isCompleted={gameCompleted}
-            score={gameScore}
-            onPlayAgain={handlePlayAgain}
-          />
-        )}
-        
-        {selectedGame === 'timeline' && (
-          <TimelineGame 
-            gameData={timelineGameData}
-            onComplete={handleGameComplete}
-            isCompleted={gameCompleted}
-            score={gameScore}
-            onPlayAgain={handlePlayAgain}
-          />
+        {showGameSelector ? (
+          // Show game selection cards
+          <div className="space-y-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">{getGameTypeTitle()}</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {getCurrentGames().map((game) => (
+                <motion.div
+                  key={game.id}
+                  whileHover={{ y: -5 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => handleSpecificGameSelect(game)}
+                  className="bg-dark-200 p-4 rounded-lg cursor-pointer hover:bg-dark-100"
+                >
+                  <h3 className="font-medium text-gray-100 mb-2">{game.title}</h3>
+                  <p className="text-sm text-gray-400 mb-3">{game.description}</p>
+                  <div className="flex justify-end">
+                    <span className="text-primary-500 text-sm">Play</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Show the actual game
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">{selectedGameData?.title}</h2>
+              <button 
+                onClick={handleBackToGameList}
+                className="text-sm text-primary-500 hover:text-primary-400"
+              >
+                Back to {getGameTypeTitle()}
+              </button>
+            </div>
+            {renderGameComponent()}
+          </div>
         )}
       </motion.div>
       
@@ -464,12 +898,20 @@ const ConstitutionalGamePage = () => {
             </svg>
             <h3 className="text-2xl font-bold text-white mb-2">Game Completed!</h3>
             <p className="text-white/80 mb-6">Your score: {gameScore.toFixed(2)}%</p>
-            <button 
-              onClick={handlePlayAgain}
-              className="px-5 py-2.5 bg-white text-primary-600 font-medium rounded-lg hover:bg-white/90 transition"
-            >
-              Play Again
-            </button>
+            <div className="flex justify-center space-x-4">
+              <button 
+                onClick={handlePlayAgain}
+                className="px-5 py-2.5 bg-white text-primary-600 font-medium rounded-lg hover:bg-white/90 transition"
+              >
+                Play Again
+              </button>
+              <button 
+                onClick={handleBackToGameList}
+                className="px-5 py-2.5 bg-primary-700 text-white font-medium rounded-lg hover:bg-primary-800 transition"
+              >
+                Try Another Game
+              </button>
+            </div>
           </div>
         </motion.div>
       )}
@@ -477,52 +919,32 @@ const ConstitutionalGamePage = () => {
       {/* Game badges and achievements */}
       <div className="card p-5">
         <h2 className="text-xl font-bold text-white mb-4">Your Achievements</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-dark-200 flex items-center justify-center mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-            </div>
-            <span className="text-sm text-gray-400">Quiz Master</span>
+        
+        {achievementsLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
           </div>
-          
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-dark-200 flex items-center justify-center mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <span className="text-sm text-gray-400">Constitution Defender</span>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {achievements.length > 0 ? (
+              achievements.map(badge => (
+                <div key={badge.id} className="flex flex-col items-center">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-2 ${getBadgeColor(badge.rarity, badge.earned)}`}>
+                    {getBadgeIcon(badge.name)}
+                  </div>
+                  <span className={`text-sm ${badge.earned ? 'text-white' : 'text-gray-400'}`}>{badge.name}</span>
+                  {badge.earned && (
+                    <span className="text-xs text-gray-500 mt-1">Earned</span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-6">
+                <p className="text-gray-400">Complete games to earn achievements!</p>
+              </div>
+            )}
           </div>
-          
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-blue-900/30 border-2 border-blue-500 flex items-center justify-center mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <span className="text-sm text-blue-400">Preamble Scholar</span>
-          </div>
-          
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-dark-200 flex items-center justify-center mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-              </svg>
-            </div>
-            <span className="text-sm text-gray-400">Rights Expert</span>
-          </div>
-          
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-dark-200 flex items-center justify-center mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-              </svg>
-            </div>
-            <span className="text-sm text-gray-400">Amendment Tracker</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import ContentDetail from './pages/ContentDetail';
 import NotFound from './pages/NotFound';
 import ConstitutionalTopics from './pages/ConstitutionalTopics';
 import ConstitutionalGamePage from './pages/ConstitutionalGamePage';
+import ConstitutionMapPage from './pages/ConstitutionMapPage';
 
 // Layout
 import Layout from './components/Layout';
@@ -56,6 +57,7 @@ function App() {
         <Route path="profile" element={<Profile />} />
         <Route path="constitution" element={<ConstitutionalTopics />} />
         <Route path="constitution/games" element={<ConstitutionalGamePage />} />
+        <Route path="constitution/map" element={<ConstitutionMapPage />} />
       </Route>
       
       {/* 404 route */}

@@ -222,7 +222,12 @@ const Dashboard = () => {
           
           {/* Continue learning section */}
           <div className="card">
-            <h2 className="text-xl font-bold text-white mb-4">Continue Learning</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Continue Learning</h2>
+              <Link to="/topics" className="text-sm text-primary-500 hover:text-primary-400">
+                View all topics
+              </Link>
+            </div>
             
             {dashboardData.progress.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
